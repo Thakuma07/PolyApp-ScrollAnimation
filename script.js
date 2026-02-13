@@ -1,7 +1,15 @@
 gsap.registerPlugin(ScrollTrigger);
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    // ✅ SAFETY CHECK
+    if (typeof Lenis === "undefined") {
+        console.error("Lenis is not loaded. Check CDN order in index.html");
+        return;
+    }
+
     const lenis = new Lenis();
+
     lenis.on("scroll", ScrollTrigger.update);
     gsap.ticker.add((time) => lenis.raf(time * 1000));
     gsap.ticker.lagSmoothing(0);
@@ -39,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateViewport() {
         viewport.centerX = window.innerWidth / 2;
-        viewport.centerY = window.innerHeight / 2,
+        viewport.centerY = window.innerHeight / 2;
         viewport.rangeMin = Math.min(window.innerWidth, window.innerHeight) * 0.35;
         viewport.rangeMax = Math.min(window.innerWidth, window.innerHeight) * 0.7;
     }
@@ -53,32 +61,18 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         const minDistance = Math.min(...Object.values(distances));
-        const cardCenterOffsetX = CONFIG.cardWidth / 2;
-        const cardCenterOffsetY = CONFIG.cardHeight / 2;
-        const offsetVariation = () => (Math.random() - 0.5) * 400;
+        const offset = () => (Math.random() - 0.5) * 400;
 
-        if (minDistance === distances.left) {
-            return {
-                x: -300 - Math.random() * 200,
-                y: centerY - cardCenterOffsetX + offsetVariation(),
-            };
-        }
-        if (minDistance === distances.right) {
-            return {
-                x: window.innerWidth + 50 + Math.random() * 200,
-                y: centerY - cardCenterOffsetY + offsetVariation(),
-            };
-        }
-        if (minDistance === distances.top) {
-            return {
-                x: centerX - cardCenterOffsetX + offsetVariation(),
-                y: -400 - Math.random() * 200,
-            };
-        }
-        return {
-            x: centerX - cardCenterOffsetX + offsetVariation(),
-            y: window.innerHeight + 50 + Math.random() * 200,
-        };
+        if (minDistance === distances.left)
+            return { x: -300, y: centerY + offset() };
+
+        if (minDistance === distances.right)
+            return { x: window.innerWidth + 300, y: centerY + offset() };
+
+        if (minDistance === distances.top)
+            return { x: centerX + offset(), y: -300 };
+
+        return { x: centerX + offset(), y: window.innerHeight + 300 };
     }
 
     function createCards(setNumber) {
@@ -89,13 +83,14 @@ document.addEventListener("DOMContentLoaded", () => {
             card.classList.add("card");
 
             const img = document.createElement("img");
-            img.src = `set${setNumber}/img${i + 1}.jpg`;
+            img.src = `assets/set${setNumber}/img${i + 1}.jpg`;
             card.appendChild(img);
-            
+
             const angle = Math.random() * Math.PI * 2;
-            const radius = 
+            const radius =
                 viewport.rangeMin +
                 Math.random() * (viewport.rangeMax - viewport.rangeMin);
+
             const centerX = viewport.centerX + Math.cos(angle) * radius;
             const centerY = viewport.centerY + Math.sin(angle) * radius;
 
@@ -113,8 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function animateHeading(newText) {
-        return gsap
-            .timeline()
+        return gsap.timeline()
             .to(galleryHeading, {
                 opacity: 0,
                 duration: CONFIG.headingFadeDuration,
@@ -135,18 +129,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         exitingCards.forEach(({ element, centerX, centerY }) => {
             const targetEdge = getEdgePosition(centerX, centerY);
-            tl.to(
-                element,
-                {
-                    left: targetEdge.x,
-                    top: targetEdge.y,
-                    rotation: Math.random() * 180 - 90,
-                    duration: CONFIG.animationDuration,
-                    ease: "power2.in",
-                    onComplete: () => element.remove(),
-                },
-                0,
-            );
+            tl.to(element, {
+                left: targetEdge.x,
+                top: targetEdge.y,
+                rotation: Math.random() * 180 - 90,
+                duration: CONFIG.animationDuration,
+                ease: "power2.in",
+                onComplete: () => element.remove(),
+            }, 0);
         });
 
         enteringCards.forEach(({ element, centerX, centerY }) => {
@@ -156,29 +146,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 top: targetEdge.y,
                 rotation: Math.random() * 180 - 90,
             });
-            tl.to(
-                element,
-                {
-                    left: centerX - CONFIG.cardWidth / 2,
-                    top: centerY - CONFIG.cardHeight / 2,
-                    rotation: Math.random() * 50 - 25,
-                    duration: CONFIG.animationDuration,
-                    ease: "power2.out",
-                },
-                CONFIG.animationOverlap,
-            );
+
+            tl.to(element, {
+                left: centerX - CONFIG.cardWidth / 2,
+                top: centerY - CONFIG.cardHeight / 2,
+                rotation: Math.random() * 50 - 25,
+                duration: CONFIG.animationDuration,
+                ease: "power2.out",
+            }, CONFIG.animationOverlap);
         });
 
         return tl;
     }
 
     function getSectionIndex(progress) {
-        if (progress < 0.75) return 0;
+        if (progress < 0.25) return 0;
         if (progress < 0.5) return 1;
         if (progress < 0.75) return 2;
         return 3;
     }
-    
+
     function reinitialize() {
         state.activeCards.forEach(({ element }) => element.remove());
         updateViewport();
@@ -205,14 +192,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const newCards = createCards(targetSection + 1);
 
             Promise.all([
-                animateCards(state.activeCards, newCards).then(),
-                animateHeading(CONFIG.headings[targetSection]).then(),
+                animateCards(state.activeCards, newCards),
+                animateHeading(CONFIG.headings[targetSection]),
             ]).then(() => {
                 state.activeCards = newCards;
                 state.currentSection = targetSection;
                 state.isAnimating = false;
             });
-        },  
+        },
     });
 
     window.addEventListener("resize", () => {
